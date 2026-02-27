@@ -8,8 +8,9 @@
 
 <br>
 
-**LiteBright** is a lightweight Windows system-tray app for controlling monitor brightness.  
-It lives quietly in the taskbar, uses virtually no memory, and starts instantly — no background polling, no bloat.
+**LiteBright** is a lightweight brightness control tool for Windows that makes adjusting monitor brightness quick and effortless.
+It lets you adjust your screen brightness instantly, without opening settings or touching monitor buttons.
+
 
 <br>
 
