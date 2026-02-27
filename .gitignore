@@ -1,0 +1,20 @@
+# Build outputs
+bin/
+obj/
+
+# Rider / VS / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.swp
+*.DS_Store
+
+# Publish & installer artifacts
+bin/publish-setup/
+bin/installer-output/
+
+# .NET
+*.dll.orig
+*.pdb
+project.lock.json
