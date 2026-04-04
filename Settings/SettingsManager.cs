@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace BrightnessController.Settings;
 
-/// <summary>Loads and saves <see cref="AppSettings"/> to a JSON file in %AppData%.</summary>
 public static class SettingsManager
 {
     // ── File location ─────────────────────────────────────────────────────────
@@ -29,7 +28,6 @@ public static class SettingsManager
     private static AppSettings? _current;
     public  static AppSettings  Current => _current ??= Load();
 
-    // ── Load ──────────────────────────────────────────────────────────────────
 
     public static AppSettings Load()
     {
@@ -47,14 +45,11 @@ public static class SettingsManager
             }
         }
         catch
-        {
-            // Corrupted file → fall back to defaults silently.
-        }
+        
         _current = new AppSettings();
         return _current;
     }
 
-    // ── Save ──────────────────────────────────────────────────────────────────
 
     public static void Save(AppSettings settings)
     {
@@ -66,9 +61,7 @@ public static class SettingsManager
             _current = settings;
         }
         catch
-        {
-            // Non-fatal; settings will revert on next launch.
-        }
+        
     }
 
     public static void Save() => Save(Current);

@@ -1,14 +1,6 @@
 namespace BrightnessController.Helpers;
-
-/// <summary>
-/// Generates tray icons at runtime.
-/// Draws a white sun symbol — always visible on Windows 11's dark taskbar.
-/// </summary>
 public static class IconHelper
 {
-    /// <summary>
-    /// Creates a 32×32 white sun icon suitable for the system tray.
-    /// </summary>
     public static Icon CreateTrayIcon()
     {
         const int size  = 32;
@@ -28,11 +20,9 @@ public static class IconHelper
         using var pen  = new Pen(white, 2.2f) { StartCap = System.Drawing.Drawing2D.LineCap.Round,
                                                 EndCap   = System.Drawing.Drawing2D.LineCap.Round };
 
-        // Core circle
         float coreR = 6.5f;
         g.FillEllipse(fill, cx - coreR, cy - coreR, coreR * 2, coreR * 2);
 
-        // 8 rays
         float innerR = coreR + 2.5f;
         float outerR = cx - 1.5f;
         for (int i = 0; i < 8; i++)

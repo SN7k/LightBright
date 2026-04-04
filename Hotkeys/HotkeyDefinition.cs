@@ -2,7 +2,6 @@ using System.Text;
 
 namespace BrightnessController.Hotkeys;
 
-/// <summary>Modifier key flags used by RegisterHotKey.</summary>
 [Flags]
 public enum HotkeyModifiers : uint
 {
@@ -13,10 +12,6 @@ public enum HotkeyModifiers : uint
     Win     = 0x0008,
 }
 
-/// <summary>
-/// Identifies the action a hotkey is bound to.
-/// The monitor index is encoded as a suffix when more than one display is present.
-/// </summary>
 public enum HotkeyAction
 {
     BrightnessUp_Monitor0   = 0,
@@ -29,24 +24,20 @@ public enum HotkeyAction
     BrightnessDown_Monitor3 = 7,
 }
 
-/// <summary>Describes a single user-defined global hotkey binding.</summary>
 public sealed class HotkeyDefinition
 {
     public HotkeyAction    Action    { get; set; }
     public HotkeyModifiers Modifiers { get; set; }
     public Keys            Key       { get; set; }
 
-    /// <summary>Unique integer ID passed to RegisterHotKey (== (int)Action + 1000).</summary>
     public int Id => (int)Action + 1000;
 
     public bool IsValid => Key != Keys.None;
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     public static int MonitorIndex(HotkeyAction action) => ((int)action) / 2;
     public static bool IsIncrease(HotkeyAction action)  => ((int)action) % 2 == 0;
 
-    /// <summary>Human-readable string e.g. "Ctrl+Alt+F1".</summary>
     public override string ToString()
     {
         if (!IsValid) return "(none)";
@@ -59,7 +50,6 @@ public sealed class HotkeyDefinition
         return sb.ToString();
     }
 
-    /// <summary>Returns a clone of this definition.</summary>
     public HotkeyDefinition Clone() =>
         new() { Action = Action, Modifiers = Modifiers, Key = Key };
 }

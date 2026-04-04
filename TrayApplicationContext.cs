@@ -6,10 +6,6 @@ using BrightnessController.UI;
 
 namespace BrightnessController;
 
-/// <summary>
-/// Central application context.  Owns the NotifyIcon, MonitorManager,
-/// HotkeyManager and BrightnessPanel.  No main window ever appears.
-/// </summary>
 public sealed class TrayApplicationContext : ApplicationContext
 {
     // ── Core services ─────────────────────────────────────────────────────────
@@ -18,69 +14,49 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly NotifyIcon     _trayIcon       = new();
     private readonly BrightnessPanel _panel;
 
-    // ── Per-monitor context-menu items (refreshed when monitors change) ───────
     private ContextMenuStrip _contextMenu = new();
 
-    // ── Singleton settings form ───────────────────────────────────────────────
     private SettingsForm? _settingsForm;
 
-    // ── Tray icon click tracking ──────────────────────────────────────────────
     private Point _lastTrayClickPosition;
 
-    // ── Tray scroll (low-level mouse hook) ────────────────────────────────────
     private Native.NativeMethods.LowLevelMouseProc? _mouseHookProc;  // keep delegate alive
     private IntPtr _mouseHook = IntPtr.Zero;
-    // Center of the tray icon on screen — updated by NotifyIcon.MouseMove.
-    // Used to verify the cursor is actually over the icon when a scroll arrives.
     private Point _trayIconCenter;
     private bool  _trayIconCenterKnown;
 
-    // ── Tooltip auto-reset after scroll ──────────────────────────────────────
     private readonly System.Windows.Forms.Timer _tooltipResetTimer = new() { Interval = 2000 };
 
-    // ─────────────────────────────────────────────────────────────────────────
 
     public TrayApplicationContext()
     {
-        // Must construct HotkeyManager on UI thread (after message loop starts).
         _hotkeyManager = new HotkeyManager();
         _hotkeyManager.HotkeyPressed += OnHotkeyPressed;
 
-        // Refresh monitor list on startup.
         _monitorManager.Refresh();
 
-        // Panel (lazy-built sliders; reuses form instance for speed).
         _panel = new BrightnessPanel(_monitorManager);
         _panel.SettingsRequested += OpenSettings;
-        _ = _panel.Handle; // Force Win32 HWND now — required for BeginInvoke from hook thread
+        _ = _panel.Handle;
 
-        // Tray icon
         SetupTrayIcon();
         _tooltipResetTimer.Tick += (_, _) => { _tooltipResetTimer.Stop(); _trayIcon.Text = "LiteBright"; };
 
-        // Low-level mouse hook for scroll-over-tray-icon
         _mouseHookProc = MouseHookCallback;
         using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
         _mouseHook = Native.NativeMethods.SetWindowsHookEx(
             Native.NativeMethods.WH_MOUSE_LL, _mouseHookProc,
             Native.NativeMethods.GetModuleHandle(mod.ModuleName!), 0);
 
-        // Apply saved hotkeys
         ApplyHotkeys(SettingsManager.Current);
 
-        // Ensure startup registry is consistent with saved setting
         Helpers.StartupManager.Apply(SettingsManager.Current.StartWithWindows);
 
-        // Listen for display configuration changes (monitor plugged/unplugged).
         SystemEvents_DisplaySettingsChanged(this, EventArgs.Empty);
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged +=
             SystemEvents_DisplaySettingsChanged;
     }
 
-    // ── Tray icon setup ───────────────────────────────────────────────────────
-
-    // Load the embedded icon.ico at the specified size (used for app/settings window icon).
-    // Requests 256×256 — the maximum size Windows renders for taskbar/Alt+Tab/Explorer.
     public static Icon LoadAppIcon(Size? size = null)
     {
         var asm    = System.Reflection.Assembly.GetExecutingAssembly();
@@ -99,7 +75,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         _trayIcon.MouseDoubleClick+= (_, _) => ShowPanel();
         _trayIcon.MouseMove       += (_, _) =>
         {
-            // Record the icon's screen position every time the cursor is over it.
             _trayIconCenter      = Cursor.Position;
             _trayIconCenterKnown = true;
         };
@@ -158,7 +133,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         _trayIcon.ContextMenuStrip = _contextMenu;
     }
 
-    // ── Tray click handler ────────────────────────────────────────────────────
 
     private void TrayIcon_MouseClick(object? sender, MouseEventArgs e)
     {
@@ -180,7 +154,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         _panel.ShowAtTray(_lastTrayClickPosition);
     }
 
-    // ── Hotkey handler ────────────────────────────────────────────────────────
 
     private void OnHotkeyPressed(HotkeyDefinition def)
     {
@@ -194,7 +167,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         var mon = monitors[monitorIndex];
         bool ok = _monitorManager.StepBrightness(mon, isUp ? step : -step);
 
-        // Update tray tooltip when brightness changes via hotkey
         if (ok)
         {
             int pct = mon.IsInternal ? mon.Brightness : mon.BrightnessPercent;
@@ -202,7 +174,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
-    // ── Settings ──────────────────────────────────────────────────────────────
 
     private void OpenSettings()
     {
@@ -228,17 +199,12 @@ public sealed class TrayApplicationContext : ApplicationContext
         _hotkeyManager.ApplyBindings(defs);
     }
 
-    // ── Display change ────────────────────────────────────────────────────────
-
     private void SystemEvents_DisplaySettingsChanged(object? sender, EventArgs e)
     {
         _monitorManager.Refresh();
         BuildContextMenu();
     }
 
-    // ── Exit ──────────────────────────────────────────────────────────────────
-
-    // ── Tray mouse-wheel hook callback ────────────────────────────────────────
 
     private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
@@ -250,11 +216,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
             if (msg == Native.NativeMethods.WM_MOUSEWHEEL)
             {
-                // Only act when the cursor is currently inside the tray icon's
-                // bounding box.  We use the last-known icon center (recorded by
-                // NotifyIcon.MouseMove) plus a ±20 px tolerance to cover the
-                // icon area.  This means scrolling anywhere else on the taskbar
-                // — even right after clicking the icon — has no effect.
+            
                 var cur = Cursor.Position;
                 bool overIcon = _trayIconCenterKnown
                     && Math.Abs(cur.X - _trayIconCenter.X) <= 20
@@ -262,7 +224,6 @@ public sealed class TrayApplicationContext : ApplicationContext
 
                 if (overIcon)
                 {
-                    // hi-word: positive = scroll up (increase), negative = down
                     int wheelDelta = (short)(hs.mouseData >> 16);
                     int step       = SettingsManager.Current.BrightnessStep;
                     int change     = wheelDelta > 0 ? step : -step;
@@ -274,9 +235,7 @@ public sealed class TrayApplicationContext : ApplicationContext
                         int  newPct = mons[0].BrightnessPercent;
                         bool inc    = change > 0;
 
-                        // Update the tray icon tooltip — visible while the user hovers
                         string monName = mons[0].Name;
-                        // Strip trailing " (\\.\ DISPLAYx)" device path if present
                         int parenIdx = monName.LastIndexOf(" (", StringComparison.Ordinal);
                         if (parenIdx > 0) monName = monName[..parenIdx];
                         _panel.BeginInvoke(() =>
@@ -304,8 +263,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         ExitThread();
     }
 
-    // ── Dispose ───────────────────────────────────────────────────────────────
-
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -324,10 +281,6 @@ public sealed class TrayApplicationContext : ApplicationContext
         }
         base.Dispose(disposing);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Dark theme renderer for context menus
-    // ─────────────────────────────────────────────────────────────────────────
 
     private sealed class ThemedMenuRenderer : ToolStripProfessionalRenderer
     {

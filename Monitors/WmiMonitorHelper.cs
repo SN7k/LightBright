@@ -2,20 +2,13 @@ using System.Management;
 
 namespace BrightnessController.Monitors;
 
-/// <summary>
-/// Controls brightness for the laptop's built-in display via the WMI
-/// WmiMonitorBrightness / WmiMonitorBrightnessMethods classes.
-/// Only works for panels driven by the laptop driver stack.
-/// </summary>
 internal static class WmiMonitorHelper
 {
     private const string WmiScope            = @"root\WMI";
     private const string BrightnessClass     = "WmiMonitorBrightness";
     private const string BrightnessMethodCls = "WmiMonitorBrightnessMethods";
 
-    // ── Read ─────────────────────────────────────────────────────────────────
 
-    /// <summary>Returns current brightness (0-100). Returns -1 on failure.</summary>
     public static int GetBrightness()
     {
         try
@@ -35,12 +28,6 @@ internal static class WmiMonitorHelper
         return -1;
     }
 
-    // ── Write ────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Sets brightness (0-100).
-    /// <paramref name="timeout"/> is the persistence timeout in seconds; 0 = immediate permanent.
-    /// </summary>
     public static bool SetBrightness(int value, uint timeout = 1)
     {
         value = Math.Clamp(value, 0, 100);
@@ -61,9 +48,6 @@ internal static class WmiMonitorHelper
         return false;
     }
 
-    // ── Availability check ───────────────────────────────────────────────────
-
-    /// <summary>Returns true if a WMI-controlled internal display is present.</summary>
     public static bool IsAvailable()
     {
         try

@@ -3,38 +3,24 @@ using BrightnessController.Native;
 
 namespace BrightnessController.Monitors;
 
-/// <summary>
-/// Enumerates physical displays and provides unified brightness / contrast
-/// read-write access regardless of whether the panel is WMI-controlled (internal)
-/// or DDC/CI-controlled (external).
-/// </summary>
 public sealed class MonitorManager : IDisposable
 {
     private List<MonitorInfo> _monitors = new();
     private bool _disposed;
 
-    // Expose the current snapshot; callers must call Refresh() first.
     public IReadOnlyList<MonitorInfo> Monitors => _monitors;
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     public MonitorManager() { }
 
-    /// <summary>
-    /// (Re-)enumerates all connected displays and reads their current
-    /// brightness / contrast values. Call once at startup and whenever the
-    /// display configuration changes (WM_DISPLAYCHANGE).
-    /// </summary>
     public void Refresh()
     {
-        // Release existing DDC/CI handles before re-enumerating.
         DisposeMonitors();
 
         var newList = new List<MonitorInfo>();
         bool wmiAvailable = WmiMonitorHelper.IsAvailable();
         int index = 0;
 
-        // ── Walk all HMONITORs ───────────────────────────────────────────────
         NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
             (hMonitor, _, ref _, _) =>
             {
@@ -50,9 +36,6 @@ public sealed class MonitorManager : IDisposable
         _monitors = newList;
     }
 
-    // ── Brightness ───────────────────────────────────────────────────────────
-
-    /// <summary>Sets brightness as a 0-100 percentage for the given monitor.</summary>
     public bool SetBrightness(MonitorInfo mon, int percent)
     {
         percent = Math.Clamp(percent, 0, 100);
@@ -73,7 +56,6 @@ public sealed class MonitorManager : IDisposable
         }
     }
 
-    /// <summary>Steps brightness up (+) or down (-) by <paramref name="stepPercent"/> points.</summary>
     public bool StepBrightness(MonitorInfo mon, int stepPercent)
     {
         int current = mon.IsInternal
@@ -82,12 +64,10 @@ public sealed class MonitorManager : IDisposable
         return SetBrightness(mon, current + stepPercent);
     }
 
-    // ── Contrast ─────────────────────────────────────────────────────────────
 
-    /// <summary>Sets contrast as a 0-100 percentage for the given monitor.</summary>
     public bool SetContrast(MonitorInfo mon, int percent)
     {
-        if (mon.IsInternal) return false; // WMI has no contrast API
+        if (mon.IsInternal) return false;
 
         percent = Math.Clamp(percent, 0, 100);
         uint raw = DdcCiHelper.PercentToRaw(percent,
@@ -97,11 +77,9 @@ public sealed class MonitorManager : IDisposable
         return ok;
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
 
     private static MonitorInfo? BuildMonitorInfo(IntPtr hMonitor, int index, bool wmiAvailable)
     {
-        // Retrieve GDI monitor info (device name, flags).
         var mi = new NativeMethods.MONITORINFOEX
         {
             cbSize = (uint)Marshal.SizeOf<NativeMethods.MONITORINFOEX>()
@@ -114,7 +92,6 @@ public sealed class MonitorManager : IDisposable
 
         if (isInternal)
         {
-            // Internal / laptop display — controlled via WMI
             int brightness = WmiMonitorHelper.GetBrightness();
             if (brightness < 0) brightness = 100;
 
@@ -134,11 +111,9 @@ public sealed class MonitorManager : IDisposable
         }
         else
         {
-            // External display — controlled via DDC/CI
             var physArr = DdcCiHelper.GetPhysicalMonitors(hMonitor);
             if (physArr.Length == 0)
             {
-                // DDC/CI not supported; create a placeholder that reports failure gracefully.
                 return new MonitorInfo
                 {
                     Index         = index,
@@ -179,8 +154,6 @@ public sealed class MonitorManager : IDisposable
             };
         }
     }
-
-    // ── Dispose ───────────────────────────────────────────────────────────────
 
     private void DisposeMonitors()
     {

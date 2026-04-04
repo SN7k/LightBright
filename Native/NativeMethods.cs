@@ -2,13 +2,9 @@ using System.Runtime.InteropServices;
 
 namespace BrightnessController.Native;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// P/Invoke declarations for Win32 APIs used throughout the application.
-// Grouped by subsystem for readability.
-// ─────────────────────────────────────────────────────────────────────────────
+
 internal static class NativeMethods
 {
-    // ── Monitor enumeration (user32) ─────────────────────────────────────────
 
     public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor,
         ref RECT lprcMonitor, IntPtr dwData);
@@ -20,7 +16,6 @@ internal static class NativeMethods
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpMonitorInfo);
 
-    // ── DDC/CI – Physical monitor handles (dxva2) ────────────────────────────
 
     [DllImport("dxva2.dll", SetLastError = true)]
     public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(
@@ -86,9 +81,6 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Structures
-    // ═════════════════════════════════════════════════════════════════════════
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT

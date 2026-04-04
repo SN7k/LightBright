@@ -2,26 +2,17 @@ using BrightnessController.Native;
 
 namespace BrightnessController.Hotkeys;
 
-/// <summary>
-/// Registers and unregisters global hotkeys using a message-only hidden window.
-/// Fires <see cref="HotkeyPressed"/> on the UI thread via the supplied
-/// <see cref="SynchronizationContext"/>.
-/// </summary>
 public sealed class HotkeyManager : IDisposable
 {
-    // ── Events ────────────────────────────────────────────────────────────────
 
-    /// <summary>Fired when a registered hotkey is triggered. Always on the UI thread.</summary>
     public event Action<HotkeyDefinition>? HotkeyPressed;
 
-    // ── State ─────────────────────────────────────────────────────────────────
 
     private readonly HotkeyWindow           _window;
     private readonly SynchronizationContext _uiContext;
     private readonly Dictionary<int, HotkeyDefinition> _registered = new();
     private bool _disposed;
 
-    // ── Construction ──────────────────────────────────────────────────────────
 
     public HotkeyManager()
     {
@@ -33,14 +24,11 @@ public sealed class HotkeyManager : IDisposable
         _window.HotkeyReceived += OnHotkeyReceived;
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
 
-    /// <summary>Registers a hotkey. Returns false if the combination is already taken.</summary>
     public bool Register(HotkeyDefinition def)
     {
         if (!def.IsValid) return false;
 
-        // Unregister first in case the binding changed.
         Unregister(def.Action);
 
         bool ok = NativeMethods.RegisterHotKey(
@@ -55,7 +43,6 @@ public sealed class HotkeyManager : IDisposable
         return ok;
     }
 
-    /// <summary>Unregisters the hotkey bound to <paramref name="action"/>.</summary>
     public void Unregister(HotkeyAction action)
     {
         int id = (int)action + 1000;
@@ -66,7 +53,6 @@ public sealed class HotkeyManager : IDisposable
         }
     }
 
-    /// <summary>Replaces all registered hotkeys with <paramref name="definitions"/>.</summary>
     public void ApplyBindings(IEnumerable<HotkeyDefinition> definitions)
     {
         UnregisterAll();
@@ -74,7 +60,6 @@ public sealed class HotkeyManager : IDisposable
             Register(def);
     }
 
-    /// <summary>Unregisters every currently registered hotkey.</summary>
     public void UnregisterAll()
     {
         foreach (var id in _registered.Keys.ToList())
@@ -82,7 +67,6 @@ public sealed class HotkeyManager : IDisposable
         _registered.Clear();
     }
 
-    // ── Private ───────────────────────────────────────────────────────────────
 
     private void OnHotkeyReceived(int id)
     {
@@ -91,7 +75,6 @@ public sealed class HotkeyManager : IDisposable
         _uiContext.Post(_ => HotkeyPressed?.Invoke(def), null);
     }
 
-    // ── Dispose ───────────────────────────────────────────────────────────────
 
     public void Dispose()
     {
@@ -101,10 +84,6 @@ public sealed class HotkeyManager : IDisposable
         _window.DestroyHandle();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Inner helper: message-only window that catches WM_HOTKEY
-    // ─────────────────────────────────────────────────────────────────────────
-
     private sealed class HotkeyWindow : NativeWindow
     {
         public event Action<int>? HotkeyReceived;
@@ -113,7 +92,6 @@ public sealed class HotkeyManager : IDisposable
         {
             var cp = new CreateParams
             {
-                // HWND_MESSAGE — message-only window, never visible
                 Parent = new IntPtr(-3)
             };
             CreateHandle(cp);
